@@ -1,8 +1,21 @@
-# Tech Research Agent: A Multi-Agent System for Automated Technical Knowledge Synthesis
+# Agentic Research Engine
+
+<p align="center">
+  <strong>Multi-agent tech research system powered by LangGraph, Groq & DuckDuckGo</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/LangGraph-1.2.2-6C47FF?style=flat-square" alt="LangGraph">
+  <img src="https://img.shields.io/badge/Groq-Llama%203.3%2070B-10B981?style=flat-square" alt="Groq">
+  <img src="https://img.shields.io/badge/DuckDuckGo-Search-FF6600?style=flat-square" alt="DuckDuckGo">
+  <img src="https://img.shields.io/badge/Python-FastAPI-009688?style=flat-square" alt="FastAPI">
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square" alt="React">
+  <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License">
+</p>
 
 ## Abstract
 
-This project presents a production-grade multi-agent research system that automates the end-to-end workflow of technical research: searching the web, extracting structured information, cross-verifying sources, and synthesizing a structured **JSON report**. Every agent output is JSON-formatted, making it machine-readable and directly exportable to other AI agents, pipelines, or data stores. The system is built on **LangGraph** for stateful agent orchestration, **Groq** for low-latency LLM inference, and **FastAPI** for the serving layer, with a **React** frontend providing real-time streaming feedback. The architecture follows a directed acyclic graph (DAG) of specialized agents, each responsible for a discrete stage of the research pipeline, enabling modularity, observability, and extensibility.
+This project presents a production-grade multi-agent research system that automates the end-to-end workflow of technical research: searching the web via **DuckDuckGo**, extracting structured information, cross-verifying sources, and synthesizing a structured **JSON report** — all powered by **Groq's LPU inference** on Llama 3.3 70B. Every agent output is JSON-formatted, making it machine-readable and directly exportable to other AI agents, pipelines, or data stores. The system is built on **LangGraph** for stateful agent orchestration, **Groq** for low-latency LLM inference, and **FastAPI** for the serving layer, with a **React** frontend providing real-time streaming feedback. The architecture follows a directed acyclic graph (DAG) of specialized agents, each responsible for a discrete stage of the research pipeline, enabling modularity, observability, and extensibility.
 
 ---
 
@@ -536,7 +549,7 @@ If you use this project in academic work, please cite:
 ```bibtex
 @software{agentic_research_engine_2026,
   author = {Sarkar, Deep},
-  title = {Agentic Research Engine: Multi-Agent System for Automated Technical Knowledge Synthesis},
+  title = {Agentic Research Engine: Multi-Agent Tech Research System with LangGraph, Groq \& DuckDuckGo},
   year = {2026},
   url = {https://github.com/dsarkar10/agentic-research-engine}
 }

@@ -10,7 +10,7 @@ from graph.graph import build_research_graph
 from graph.state import ResearchState
 from config import DEEP_MODEL
 
-app = FastAPI(title="Tech Research Agent API")
+app = FastAPI(title="Agentic Research Engine API")
 
 app.add_middleware(
     CORSMiddleware,

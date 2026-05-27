@@ -56,8 +56,8 @@ export default function App() {
   return (
     <div>
       <header>
-        <h1>Tech Research Agent</h1>
-        <p>Multi-agent research system — output is structured JSON, exportable to any AI agent</p>
+        <h1>Agentic Research Engine</h1>
+        <p>Multi-agent system — LangGraph + Groq + DuckDuckGo — outputs structured JSON</p>
       </header>
 
       <SearchBar onSearch={handleSearch} disabled={loading} />
