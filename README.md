@@ -94,8 +94,115 @@ The system follows a **layered architecture** with three tiers:
 | LLM Inference      | Groq (Llama 3.3)   | Blazing-fast inference on Llama 3.3 70B via Groq's LPU hardware. No other provider matches this throughput for open-weight models. |
 | Web Search         | DuckDuckGo (free)  | No API key required. Privacy-respecting. Sufficient for tech research. The deep-search fallback uses Groq-generated queries for targeted retrieval. |
 | Serving Layer      | FastAPI 0.136.3    | Async-first Python framework with native SSE support via `sse-starlette`. Pydantic v2 for strict request/response validation. |
-| Frontend           | React 19 + Vite 6  | Streaming SSE parsing in the browser. `react-markdown` for safe markdown rendering. Dark-theme GitHub-inspired design. |
-| Streaming          | SSE                | Server-Sent Events over HTTP. Simpler than WebSockets for unidirectional event streaming. Native `EventSource` API in browsers. |
+| Frontend           | React 19 + Vite 6  | Streaming SSE parsing in the browser. Dark-theme GitHub-inspired design. |
+| Streaming          | SSE                | Server-Sent Events over HTTP. Simpler than WebSockets for unidirectional event streaming. |
+
+---
+
+## LangGraph Architecture
+
+LangGraph is the backbone of this system. It is a framework by LangChain for building **stateful, multi-actor agent workflows** as directed graphs. Unlike simple chain-of-thought or linear pipelines, LangGraph supports cycles, branching, and persistent state — making it ideal for multi-agent research.
+
+### Core Concepts
+
+#### 1. `StateGraph` with `TypedDict` State
+
+Every LangGraph application starts with a **state definition** — a `TypedDict` that flows through every node in the graph. In this project, `ResearchState` carries the user query, search results, extracted information, and the final report:
+
+```python
+class ResearchState(TypedDict):
+    query: str                              # Immutable — set once at start
+    deep_search_requested: bool              # Toggle set by assess_depth node
+    search_results: Annotated[list[Source], operator.add]   # Accumulated via reducer
+    deep_search_results: Annotated[list[Source], operator.add]
+    extracted_info: str | None
+    verified_sources: list[Source]
+    report: str | None
+    error: str | None
+```
+
+Key design decisions:
+- **`Annotated` with `operator.add`**: This is a *reducer* annotation. When multiple nodes return `search_results`, LangGraph automatically concatenates them into a single list instead of overwriting. This enables the `deep_search` node to append results without clobbering the initial `search_web` output.
+- **`str | None`**: Optional fields start as `None` and get populated as the graph progresses. This makes the state representation honest about what's available at each stage.
+
+#### 2. Nodes as Pure Functions
+
+Each node is a **plain Python function** that receives the full `ResearchState` and returns a **partial state update** — a dict containing only the fields it wants to modify:
+
+```python
+def search_web(state: ResearchState) -> dict:
+    query = state["query"]
+    results = []
+    with DDGS() as ddgs:
+        for r in ddgs.text(query, max_results=MAX_SEARCH_RESULTS):
+            results.append(Source(url=r.get("href", ""), ...))
+    return {"search_results": results, "error": None}
+```
+
+LangGraph merges this return dict into the shared state automatically. Nodes never mutate state directly — they return diffs. This makes the system **testable** (pure input → output), **traceable** (each step's contribution is isolated), and **replayable** (state checkpoints can be re-run).
+
+#### 3. Conditional Edges
+
+The `assess_depth` node doesn't just produce state — it **routes** the workflow. LangGraph supports conditional edges via a router function:
+
+```python
+def route_after_depth(state: ResearchState) -> str:
+    if state.get("deep_search_requested"):
+        return "deep_search"
+    return "extract_info"
+
+builder.add_conditional_edges("assess_depth", route_after_depth, {
+    "deep_search": "deep_search",
+    "extract_info": "extract_info"
+})
+```
+
+This enables the graph to dynamically choose paths — skip deep search when initial results are sufficient, or branch into targeted retrieval when needed.
+
+#### 4. Graph Compilation
+
+The graph is built declaratively and then **compiled** into an executable:
+
+```python
+builder = StateGraph(ResearchState)
+builder.add_node("search_web", search_web)
+builder.add_node("assess_depth", assess_depth)
+# ... add all nodes ...
+builder.set_entry_point("search_web")
+builder.add_edge("search_web", "assess_depth")
+builder.add_conditional_edges(...)
+builder.add_edge("write_report", END)
+graph = builder.compile()
+```
+
+`compile()` transforms the graph into an optimized runnable that can execute with **streaming**, **checkpointing**, and **async** support.
+
+#### 5. Streaming with `astream_events`
+
+LangGraph's `astream_events` provides granular events at every stage of execution — when a node starts, streams tokens, and ends. This enables the **real-time progress panel** in the frontend:
+
+```python
+async for event in graph.astream_events(state, version="v2"):
+    kind = event.get("event", "")        # "on_chain_start", "on_chain_stream", etc.
+    node = event.get("name", "")         # "write_report", "extract_info"
+    if kind == "on_chain_start":
+        yield {"event": "status", "data": json.dumps({"agent": node, ...})}
+    if kind == "on_chain_stream":
+        yield {"event": "report_chunk", "data": json.dumps({"chunk": text})}
+```
+
+The frontend consumes these SSE events and updates the UI in real time — showing which agent is active, what it's doing, and streaming the report token by token as the LLM generates it.
+
+### Why LangGraph over Alternatives
+
+| Approach         | Limitation                                                    |
+|------------------|---------------------------------------------------------------|
+| Simple chain     | No branching, no looping, no shared state between steps       |
+| CrewAI           | Opinionated role abstraction; harder to customize state flow  |
+| Hand-rolled loop | No streaming events, no checkpointing, no built-in DAG        |
+| **LangGraph**    | DAG with state, streaming, conditional routing, checkpointing |
+
+LangGraph's key differentiator is the **state-as-dataflow** model: the graph is a first-class citizen you can inspect, serialize, and replay. This is essential for production agent systems where observability matters.
 
 ---
 
