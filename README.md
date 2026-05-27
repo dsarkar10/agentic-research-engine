@@ -214,8 +214,8 @@ The system is cross-platform (macOS, Linux, Windows WSL).
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/tech-research-agent.git
-cd tech-research-agent
+git clone https://github.com/dsarkar10/agentic-research-engine.git
+cd agentic-research-engine
 ```
 
 ### 2. Backend Setup
@@ -534,10 +534,10 @@ MIT License — see [LICENSE](LICENSE).
 If you use this project in academic work, please cite:
 
 ```bibtex
-@software{tech_research_agent_2026,
-  author = {Deepsarkar},
-  title = {Tech Research Agent: A Multi-Agent System for Automated Technical Knowledge Synthesis},
+@software{agentic_research_engine_2026,
+  author = {Sarkar, Deep},
+  title = {Agentic Research Engine: Multi-Agent System for Automated Technical Knowledge Synthesis},
   year = {2026},
-  url = {https://github.com/your-username/tech-research-agent}
+  url = {https://github.com/dsarkar10/agentic-research-engine}
 }
 ```
