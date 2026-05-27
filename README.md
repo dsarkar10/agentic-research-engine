@@ -44,45 +44,37 @@ This project presents a production-grade multi-agent research system that automa
 
 The system follows a **layered architecture** with three tiers:
 
-```
-┌──────────────────────────────────────────────────────────┐
-│                     Frontend (React)                      │
-│  SearchBar → ProgressPanel (SSE stream) → ReportView     │
-└──────────────────────────┬───────────────────────────────┘
-                           │ HTTP/SSE
-┌──────────────────────────▼───────────────────────────────┐
-│                     Backend (FastAPI)                      │
-│  POST /research → SSE event stream → report + sources     │
-└──────────────────────────┬───────────────────────────────┘
-                           │ Invocation
-┌──────────────────────────▼───────────────────────────────┐
-│              LangGraph State Machine (DAG)                │
-│  ┌─────────┐  ┌──────────┐  ┌───────────┐               │
-│  │ Search  │→│ Assess  │→│ Extract  │               │
-│  │ Web     │  │ Depth   │  │ Info     │               │
-│  └─────────┘  └────┬─────┘  └───────────┘               │
-│                    │                                      │
-│                    ▼                                      │
-│              ┌──────────┐                                │
-│              │ Deep     │ (conditional)                  │
-│              │ Search   │                                │
-│              └──────────┘                                │
-│                                        │                  │
-│                                        ▼                  │
-│                              ┌──────────┐  ┌───────────┐ │
-│                              │ Verify   │→│ Write     │ │
-│                              │ Sources  │  │ Report    │ │
-│                              └──────────┘  └───────────┘ │
-└──────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Frontend["Frontend (React 19)"]
+        SB[SearchBar] --> PP[ProgressPanel]
+        PP --> RV[ReportView]
+    end
+
+    subgraph Backend["Backend (FastAPI)"]
+        API["POST /research"] --> SSE["SSE Event Stream<br/>status | report_chunk | complete"]
+    end
+
+    subgraph Graph["LangGraph State Machine"]
+        SW["search_web<br/>DuckDuckGo search"] --> AD["assess_depth<br/>LLM decides"]
+        AD -->|"deep needed"| DS["deep_search<br/>3 targeted queries"]
+        AD -->|"skip"| EI["extract_info<br/>Extract code & concepts"]
+        DS --> EI
+        EI --> VS["verify_sources<br/>Cross-reference URLs"]
+        VS --> WR["write_report<br/>Synthesize JSON report"]
+    end
+
+    Frontend -- "HTTP / SSE" --> Backend
+    Backend -- "astream_events" --> Graph
 ```
 
 ### Data Flow
 
 1. **Client** sends a POST request with a query to `/research`
-2. **FastAPI** instantiates a `ResearchState` and streams it through the LangGraph
-3. **LangGraph** executes the DAG nodes sequentially, with a conditional branch at `assess_depth`
-4. Each node emits `astream_events` that are forwarded as Server-Sent Events (SSE) to the client
-5. The **React frontend** consumes the SSE stream, updating a progress panel in real time and rendering the report incrementally
+2. **FastAPI** instantiates a `ResearchState` and invokes the compiled LangGraph via `astream_events`
+3. **LangGraph** executes the DAG — `search_web` → `assess_depth` (conditional branch) → `extract_info` → `verify_sources` → `write_report`
+4. Each node returns partial state updates; the `write_report` node streams tokens via `on_chain_stream` events
+5. **FastAPI** forwards each event as an SSE message (`status`, `report_chunk`, or `complete`), parsed by the React frontend for real-time UI updates
 
 ---
 
